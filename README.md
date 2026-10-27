@@ -2,7 +2,7 @@
 
 Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels.
 
-![Commit dates highlighted beside commit hashes on a GitHub pull request](images/commits.png)
+![Commit dates highlighted beside commit hashes on a GitHub pull request](https://github.com/yuki777/date-on-hash-on-github-pr/raw/9a8d2292ad934ccb2d9f6048cf16261a57cd6683/images/commits.png)
 
 ## Chrome Web Store
 
