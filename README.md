@@ -1,6 +1,16 @@
 # Date on Hash on GitHub PR
 
-Show the committer date beside commit hashes on GitHub pull requests.
+Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels.
+
+## Chrome Web Store
+
+Version **1.0.7** was submitted to the Chrome Web Store on **October 27, 2026** and is **pending review**. The submission includes updated screenshots showing the date labels beside commit hashes.
+
+Extension ID: `filhglmdegdbgclfohfboelbdkggfngc`.
+
+Until the store listing is available, you can load the extension locally using the instructions below.
+
+## Date labels
 
 Labels include both the age of a recent commit and its local timestamp:
 
@@ -13,6 +23,12 @@ Minutes and hours are rounded down. Commits less than one minute old show `0 min
 Labels update once per minute and when you return to the tab. These label updates do not refetch commit data. Timestamps follow your browser's local time zone.
 
 ## Load the extension locally
+
+Clone this repository or download and extract its ZIP:
+
+```sh
+git clone https://github.com/yuki777/date-on-hash-on-github-pr.git
+```
 
 1. Open `chrome://extensions` in Chrome.
 2. Enable **Developer mode**.
