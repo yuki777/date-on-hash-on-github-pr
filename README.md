@@ -4,11 +4,13 @@ Show the committer date beside commit hashes on GitHub pull requests in pale yel
 
 ## Chrome Web Store
 
-Version **1.0.7** was submitted to the Chrome Web Store on **October 27, 2026** and is **pending review**. The submission includes updated screenshots showing the date labels beside commit hashes.
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/date-on-hash-on-github-pr/filhglmdegdbgclfohfboelbdkggfngc).
+
+After installation, open or reload a GitHub pull request to see dates beside matching commit hashes.
 
 Extension ID: `filhglmdegdbgclfohfboelbdkggfngc`.
 
-Until the store listing is available, you can load the extension locally using the instructions below.
+You can also load the extension locally using the instructions below.
 
 ## Date labels
 
