@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Date on Hash on GitHub PR",
+  "version": "1.0.7",
+  "description": "Show commit dates beside commit hashes on GitHub pull requests, with relative times and local timestamps.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
