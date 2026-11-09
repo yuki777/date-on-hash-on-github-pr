@@ -44,7 +44,7 @@ No build, extension account, or GitHub token setup is required. There is no sett
 
 ## Supported pages
 
-The extension adds labels on `https://github.com/OWNER/REPO/pull/NUMBER` and its subpages. It supports matching commit hash links in Conversation, Commits, and Files views, including links added after the page loads.
+The extension adds labels on `https://github.com/OWNER/REPO/pull/NUMBER` and its subpages. It supports matching commit hash links in Conversation, Commits, and Files views, including links added after the page loads. It also supports the commit rows of the new PR Overview page (`?overview=true`), whose hashes link to `/pull/NUMBER/changes/SHA`.
 
 The content script is registered for all of `github.com` so it can handle navigation from a non-PR page into a PR without a full page reload. It checks the current URL and adds labels only on PR pages. GitHub Enterprise Server on other domains is not supported.
 

@@ -25,7 +25,7 @@
       return null;
     }
     if (url.origin !== location.origin) return null;
-    const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:commit|pull\/(\d+)\/commits)\/([a-f0-9]{40})\/?$/i);
+    const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:commit|pull\/(\d+)\/(?:commits|changes))\/([a-f0-9]{40})\/?$/i);
     if (!match || `${match[1]}/${match[2]}`.toLowerCase() !== context.repository.toLowerCase()) return null;
     if (match[3] && match[3] !== context.number) return null;
     const sha = match[4].toLowerCase();
