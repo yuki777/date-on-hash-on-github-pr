@@ -125,7 +125,8 @@
       const state = String(run.state || "").toUpperCase();
       if (!SETTLED_STATES.has(state)) settled = false;
       if (!FAILED_STATES.has(state)) continue;
-      const name = typeof run.displayName === "string" && run.displayName.trim() ? run.displayName.trim() : "Check";
+      const label = [run.name, run.additionalContext].filter((part) => typeof part === "string" && part.trim());
+      const name = label.length ? label.map((part) => part.trim()).join(" ") : "Check";
       failed.push({ name, state, url: checkUrl(run.targetUrl) });
     }
     return { failed, settled };
@@ -239,7 +240,7 @@
   function annotateStatus(record, result) {
     if (!result?.failed.length || record.status || !isCurrent(record)) return;
     const first = result.failed.find((run) => run.url) || result.failed[0];
-    const lines = result.failed.map((run) => `${run.name} (${run.state.toLowerCase().replace(/_/g, " ")})`);
+    const lines = result.failed.map((run) => `${run.name}: ${run.state.toLowerCase().replace(/_/g, " ")}`);
     const title = `Failed checks:\n${lines.join("\n")}`;
     const element = document.createElement(first.url ? "a" : "span");
     element.className = "github-pr-commit-ci-failed";
@@ -247,10 +248,8 @@
     element.setAttribute("aria-label", `${result.failed.length} failed check${result.failed.length === 1 ? "" : "s"}: ${result.failed.map((run) => run.name).join(", ")}`);
     if (first.url) {
       element.href = first.url;
-      if (new URL(first.url).origin !== location.origin) {
-        element.target = "_blank";
-        element.rel = "noopener noreferrer";
-      }
+      element.target = "_blank";
+      element.rel = "noopener noreferrer";
     }
     element.append(failureIcon());
     // A <code> hash sits inside its link, so the icon goes after the link to avoid nesting links.

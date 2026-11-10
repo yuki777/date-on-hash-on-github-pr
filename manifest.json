@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Date on Hash on GitHub PR",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Show commit dates and failed CI checks beside commit hashes on GitHub pull requests, with relative times and local timestamps.",
   "icons": {
     "16": "icons/icon16.png",
