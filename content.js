@@ -5,9 +5,16 @@
   const catalogs = new Map();
   const lookups = new Map();
   const records = new Map();
+  const statuses = new Map();
   const requests = [];
   let activeRequests = 0;
   let scanScheduled = false;
+
+  const FAILED_STATES = new Set(["CANCELLED", "ERROR", "FAILURE", "STARTUP_FAILURE", "TIMED_OUT"]);
+  const SETTLED_STATES = new Set([...FAILED_STATES, "SUCCESS", "COMPLETED", "SKIPPED", "NEUTRAL", "STALE"]);
+  const STATUS_REFRESH_MS = 60 * 1000;
+  // Checks can be registered a little after a push, so an empty pending summary is polled only for recent commits.
+  const EMPTY_CHECKS_WINDOW_MS = 60 * 60 * 1000;
 
   function pullRequest() {
     const match = location.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/|$)/);
@@ -69,13 +76,15 @@
 
   function drainRequests() {
     while (activeRequests < 3 && requests.length) {
-      const { path, resolve } = requests.shift();
+      const { path, type, resolve } = requests.shift();
       activeRequests += 1;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      fetch(path, { credentials: "same-origin", signal: controller.signal, headers: { Accept: "text/html" } })
+      const accept = type === "json" ? "application/json" : "text/html";
+      fetch(path, { credentials: "same-origin", signal: controller.signal, headers: { Accept: accept } })
         .then(async (response) => {
           if (!response.ok || new URL(response.url).origin !== location.origin) return null;
+          if (type === "json") return response.json();
           return new DOMParser().parseFromString(await response.text(), "text/html");
         })
         .catch(() => null)
@@ -88,11 +97,55 @@
     }
   }
 
-  function fetchDocument(path) {
+  function fetchDocument(path, type = "html") {
     return new Promise((resolve) => {
-      requests.push({ path, resolve });
+      requests.push({ path, type, resolve });
       drainRequests();
     });
+  }
+
+  function checkUrl(value) {
+    if (typeof value !== "string" || !value) return null;
+    try {
+      const url = new URL(value, location.origin);
+      return url.protocol === "https:" ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function readStatus(data, iso) {
+    if (!data || !Array.isArray(data.checkRuns)) return null;
+    const failed = [];
+    const age = iso ? Date.now() - Date.parse(iso) : Infinity;
+    let settled = !(data.checkRuns.length === 0 &&
+      String(data.checksHeaderState || "").toUpperCase() === "PENDING" && age < EMPTY_CHECKS_WINDOW_MS);
+    for (const run of data.checkRuns) {
+      if (!run || typeof run !== "object") continue;
+      const state = String(run.state || "").toUpperCase();
+      if (!SETTLED_STATES.has(state)) settled = false;
+      if (!FAILED_STATES.has(state)) continue;
+      const name = typeof run.displayName === "string" && run.displayName.trim() ? run.displayName.trim() : "Check";
+      failed.push({ name, state, url: checkUrl(run.targetUrl) });
+    }
+    return { failed, settled };
+  }
+
+  function checkStatus(context, target, refresh = false) {
+    const entry = statuses.get(target.key);
+    if (entry && !(refresh && entry.result && !entry.result.settled && Date.now() - entry.at >= STATUS_REFRESH_MS)) {
+      return entry.promise;
+    }
+    const next = { at: Date.now(), result: null, promise: null };
+    next.promise = fetchDocument(`/${context.repository}/commit/${target.sha}/status-details`, "json")
+      .then((data) => readStatus(data, dates.get(target.key)))
+      .then((result) => {
+        next.result = result;
+        next.at = Date.now();
+        return result;
+      });
+    statuses.set(target.key, next);
+    return next.promise;
   }
 
   function committedDate(context, target) {
@@ -134,6 +187,7 @@
 
   function removeRecord(record) {
     record.time?.remove();
+    record.status?.remove();
     if (record.group?.parentNode) {
       const parent = record.group.parentNode;
       while (record.group.firstChild) parent.insertBefore(record.group.firstChild, record.group);
@@ -168,11 +222,53 @@
     record.time = time;
   }
 
+  function failureIcon() {
+    const namespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("d", "M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z");
+    path.setAttribute("fill", "currentColor");
+    svg.append(path);
+    return svg;
+  }
+
+  function annotateStatus(record, result) {
+    if (!result?.failed.length || record.status || !isCurrent(record)) return;
+    const first = result.failed.find((run) => run.url) || result.failed[0];
+    const lines = result.failed.map((run) => `${run.name} (${run.state.toLowerCase().replace(/_/g, " ")})`);
+    const title = `Failed checks:\n${lines.join("\n")}`;
+    const element = document.createElement(first.url ? "a" : "span");
+    element.className = "github-pr-commit-ci-failed";
+    element.title = title;
+    element.setAttribute("aria-label", `${result.failed.length} failed check${result.failed.length === 1 ? "" : "s"}: ${result.failed.map((run) => run.name).join(", ")}`);
+    if (first.url) {
+      element.href = first.url;
+      if (new URL(first.url).origin !== location.origin) {
+        element.target = "_blank";
+        element.rel = "noopener noreferrer";
+      }
+    }
+    element.append(failureIcon());
+    // A <code> hash sits inside its link, so the icon goes after the link to avoid nesting links.
+    const after = record.node.tagName === "CODE" ? record.anchor : (record.time || record.anchor);
+    after.after(element);
+    record.status = element;
+  }
+
+  function loadStatus(record, refresh = false) {
+    return checkStatus(record.context, record, refresh).then((result) => annotateStatus(record, result));
+  }
+
   function scan() {
     scanScheduled = false;
     const context = pullRequest();
     for (const record of records.values()) {
-      if (!context || !isCurrent(record) || (record.time && !record.time.isConnected)) removeRecord(record);
+      if (!context || !isCurrent(record) || (record.time && !record.time.isConnected) ||
+        (record.status && !record.status.isConnected)) removeRecord(record);
     }
     if (!context) return;
     readDates(document, context);
@@ -184,9 +280,11 @@
         if (!existing.time && dates.has(target.key)) annotate(existing, dates.get(target.key));
         continue;
       }
-      const record = { ...target, context, time: null, group: null };
+      const record = { ...target, context, time: null, group: null, status: null };
       records.set(anchor, record);
-      committedDate(context, target).then((iso) => annotate(record, iso));
+      committedDate(context, target)
+        .then((iso) => annotate(record, iso))
+        .then(() => loadStatus(record));
     }
   }
 
@@ -199,10 +297,12 @@
   function refreshDates() {
     if (document.visibilityState !== "visible") return;
     for (const record of records.values()) {
-      if (!isCurrent(record) || (record.time && !record.time.isConnected)) {
+      if (!isCurrent(record) || (record.time && !record.time.isConnected) ||
+        (record.status && !record.status.isConnected)) {
         removeRecord(record);
         continue;
       }
+      if (!record.status) loadStatus(record, true);
       if (!record.time) continue;
       const label = formatDate(record.time.dateTime);
       if (record.time.textContent !== label) record.time.textContent = label;
