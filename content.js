@@ -252,7 +252,8 @@
   function annotateStatus(record, result) {
     // Compare the shown checks too, so the tooltip and link follow checks that finish while the state stays the same.
     const signature = result?.state ? JSON.stringify([result.state, result.runs]) : null;
-    if (!isCurrent(record) || (record.status && record.statusSignature === signature)) return;
+    // A failed request (null result) keeps whatever icon is already shown.
+    if (!result || !isCurrent(record) || (record.status && record.statusSignature === signature)) return;
     record.status?.remove();
     record.status = null;
     record.statusSignature = null;
