@@ -1,6 +1,6 @@
 # Date on Hash on GitHub PR
 
-Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels.
+Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels, and a red icon when a commit has failed CI checks.
 
 ![Commit dates highlighted beside commit hashes on a GitHub pull request](https://github.com/yuki777/date-on-hash-on-github-pr/raw/9a8d2292ad934ccb2d9f6048cf16261a57cd6683/images/commits.png)
 
@@ -25,6 +25,12 @@ Labels include both the age of a recent commit and its local timestamp:
 Minutes and hours are rounded down. Commits less than one minute old show `0 min ago`. The abbreviations `min` and `hr` stay the same for one or more units. A comma separates the relative time from the timestamp. Months use English abbreviations, days have no leading zero, and hours and minutes use two digits in 24-hour time. The label omits the year, seconds, and UTC offset. Hover over it to see the original ISO timestamp.
 
 Labels update once per minute and when you return to the tab. These label updates do not refetch commit data. Timestamps follow your browser's local time zone.
+
+## Failed CI icon
+
+When a commit has a failed check, a red icon appears after its date label. Click it to open the first failed check, such as the failed GitHub Actions job. Hover over it to see every failed check name and state.
+
+These check states count as failed: `failure`, `error`, `startup failure`, `timed out`, and `cancelled`. Commits whose checks all passed, were skipped, or are still running show no icon. While a commit still has running checks, its status is fetched again once per minute while the tab is visible, so the icon appears when a check fails. A failed icon stays until the page is reloaded, even if the check is re-run.
 
 ## Load the extension locally
 
@@ -52,11 +58,13 @@ The content script is registered for all of `github.com` so it can handle naviga
 
 The extension reads GitHub URLs and page HTML in your browser to find commit hashes and `committedDate` values. If the current page lacks a date, it fetches the PR's commit list and, if necessary, an individual commit page from the same GitHub repository. It uses the committer date, not the author date or push time.
 
+For each commit hash, it also fetches the JSON check summary that GitHub's own commit page uses (`/OWNER/REPO/commit/SHA/status-details`). It reads check names, states, and detail links from it.
+
 It fetches the full HTML before selecting the needed date, so the received page may include usernames, commit messages, or code. Page information is not sent to a developer backend or analytics service. Requests use the browser's normal GitHub login state; the extension does not independently read or store cookie values, passwords, or access tokens.
 
 The extension keeps its processing cache in tab memory. The cache can survive navigation within GitHub and is discarded on a full page reload or when the page closes. It does not use extension-specific persistent storage or the browsing history API.
 
-Requests are limited to three at a time and time out after 15 seconds. If a date cannot be retrieved, no label is shown. Reload the page to retry.
+Requests are limited to three at a time and time out after 15 seconds. If a date or check status cannot be retrieved, no label or icon is shown. Reload the page to retry.
 
 ## Privacy policy
 
@@ -66,6 +74,6 @@ Read the [published privacy policy](https://yuki777.github.io/date-on-hash-on-gi
 
 Earlier builds were loaded in Chromium and checked against two public PRs in Conversation, Commits, and Files views. Browser checks covered dynamic links, navigation, duplicate prevention, and failed retrieval. The extracted 1.0.7 submission package was checked for the exact compact format, minute/hour/day boundaries, automatic updates, preserved ISO timestamps, and three local time zones. Public PR screenshots were recaptured with the compact labels.
 
-Private repositories and very large PRs have not been tested. GitHub HTML or embedded data changes may require an extension update.
+The failed CI icon was checked against mocked GitHub responses; it relies on an undocumented GitHub endpoint. Private repositories and very large PRs have not been tested. GitHub HTML or embedded data changes may require an extension update.
 
 This Manifest V3 extension uses [content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) and [same-origin requests](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests). It requests GitHub site access without additional extension API permissions. It has no external runtime libraries or background service worker.

@@ -23,3 +23,17 @@
 .github-pr-commit-date-group > code.float-right {
   float: none !important;
 }
+
+.github-pr-commit-ci-failed {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 0.4em;
+  color: var(--fgColor-danger, #d1242f) !important;
+  line-height: 1;
+}
+
+.github-pr-commit-ci-failed:hover {
+  opacity: 0.8;
+}

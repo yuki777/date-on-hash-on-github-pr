@@ -1,10 +1,10 @@
 # Date on Hash on GitHub PR Privacy Policy
 
-Last updated: October 27, 2026
+Last updated: November 10, 2026
 
 ## Scope and purpose
 
-This policy applies to the Chrome extension "Date on Hash on GitHub PR". The extension displays commit timestamps beside commit hashes on GitHub pull request pages.
+This policy applies to the Chrome extension "Date on Hash on GitHub PR". The extension displays commit timestamps and failed CI check indicators beside commit hashes on GitHub pull request pages.
 
 ## Information processed in your browser
 
@@ -12,11 +12,13 @@ To display timestamps, the extension processes the current GitHub URL, repositor
 
 When a timestamp is not available on the current page, the extension retrieves HTML from GitHub's pull request commit list or an individual commit page. It reads the HTML before selecting the required timestamp, so the retrieved content may include GitHub usernames, commit messages, or code. The extension does not send this information to developer servers.
 
+To show failed CI checks, the extension retrieves each commit's check summary from GitHub. It processes check names, check states, and links to check details, and displays a link to the first failed check.
+
 The extension does not use an API to retrieve or save a list of your past browsing history. It uses the current GitHub URL to identify the relevant pull request and commits.
 
 ## Network requests and sign-in state
 
-Additional requests needed to obtain timestamps go to GitHub over HTTPS. These requests may use your browser's normal GitHub sign-in state.
+Additional requests needed to obtain timestamps and check states go to GitHub over HTTPS. These requests may use your browser's normal GitHub sign-in state.
 
 The extension does not independently read or store cookie values, passwords, or GitHub access tokens. GitHub's own handling of information associated with these requests is governed by GitHub's privacy policy.
 
@@ -28,7 +30,7 @@ Caches or network logs that your browser or GitHub normally maintains are separa
 
 ## Use and sharing
 
-Information is used only to retrieve, display, and update commit timestamps. The extension does not send it to developer servers, advertising services, or analytics services. It does not sell the information or use it for advertising, creditworthiness, or lending decisions.
+Information is used only to retrieve, display, and update commit timestamps and failed check indicators. The extension does not send it to developer servers, advertising services, or analytics services. It does not sell the information or use it for advertising, creditworthiness, or lending decisions.
 
 The extension's use of information adheres to the [Chrome Web Store User Data Policy, including the Limited Use requirements](https://developer.chrome.com/docs/webstore/program-policies/limited-use).
 
