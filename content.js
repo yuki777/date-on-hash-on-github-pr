@@ -11,7 +11,8 @@
   let scanScheduled = false;
 
   const FAILED_STATES = new Set(["CANCELLED", "ERROR", "FAILURE", "STARTUP_FAILURE", "TIMED_OUT"]);
-  const SETTLED_STATES = new Set([...FAILED_STATES, "SUCCESS", "COMPLETED", "SKIPPED", "NEUTRAL", "STALE"]);
+  const PASSED_STATES = new Set(["SUCCESS", "COMPLETED"]);
+  const SETTLED_STATES = new Set([...FAILED_STATES, ...PASSED_STATES, "SKIPPED", "NEUTRAL", "STALE"]);
   const STATUS_REFRESH_MS = 60 * 1000;
   // Checks can be registered a little after a push, so an empty pending summary is polled only for recent commits.
   const EMPTY_CHECKS_WINDOW_MS = 60 * 60 * 1000;
@@ -116,20 +117,24 @@
 
   function readStatus(data, iso) {
     if (!data || !Array.isArray(data.checkRuns)) return null;
-    const failed = [];
+    const runs = { failed: [], running: [], passed: [] };
     const age = iso ? Date.now() - Date.parse(iso) : Infinity;
     let settled = !(data.checkRuns.length === 0 &&
       String(data.checksHeaderState || "").toUpperCase() === "PENDING" && age < EMPTY_CHECKS_WINDOW_MS);
     for (const run of data.checkRuns) {
       if (!run || typeof run !== "object") continue;
       const state = String(run.state || "").toUpperCase();
-      if (!SETTLED_STATES.has(state)) settled = false;
-      if (!FAILED_STATES.has(state)) continue;
+      const group = FAILED_STATES.has(state) ? "failed" : PASSED_STATES.has(state) ? "passed" :
+        SETTLED_STATES.has(state) ? null : "running";
+      if (group === "running") settled = false;
+      if (!group) continue;
       const label = [run.name, run.additionalContext].filter((part) => typeof part === "string" && part.trim());
       const name = label.length ? label.map((part) => part.trim()).join(" ") : "Check";
-      failed.push({ name, state, url: checkUrl(run.targetUrl) });
+      runs[group].push({ name, state, url: checkUrl(run.targetUrl) });
     }
-    return { failed, settled };
+    // A failure is shown as soon as it happens, even while other checks are still running.
+    const state = runs.failed.length ? "failed" : runs.running.length ? "running" : runs.passed.length ? "passed" : null;
+    return { state, runs: state ? runs[state] : [], settled };
   }
 
   function checkStatus(context, target, refresh = false) {
@@ -223,7 +228,14 @@
     record.time = time;
   }
 
-  function failureIcon() {
+  const STATUS_ICONS = {
+    failed: "M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z",
+    running: "M8 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z",
+    passed: "M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16Zm3.78-9.72a.751.751 0 0 0-.018-1.042.751.751 0 0 0-1.042-.018L6.75 9.19 5.28 7.72a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042l2 2a.75.75 0 0 0 1.06 0Z"
+  };
+  const STATUS_TITLES = { failed: "Failed checks", running: "Running checks", passed: "Passed checks" };
+
+  function statusIcon(state) {
     const namespace = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(namespace, "svg");
     svg.setAttribute("viewBox", "0 0 16 16");
@@ -231,31 +243,39 @@
     svg.setAttribute("height", "14");
     svg.setAttribute("aria-hidden", "true");
     const path = document.createElementNS(namespace, "path");
-    path.setAttribute("d", "M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.751.751 0 0 0-1.042.018.751.751 0 0 0-.018 1.042L6.94 8 4.97 9.97a.749.749 0 0 0 .326 1.275.749.749 0 0 0 .734-.215L8 9.06l1.97 1.97a.749.749 0 0 0 1.275-.326.749.749 0 0 0-.215-.734L9.06 8l1.97-1.97a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215L8 6.94Z");
+    path.setAttribute("d", STATUS_ICONS[state]);
     path.setAttribute("fill", "currentColor");
     svg.append(path);
     return svg;
   }
 
   function annotateStatus(record, result) {
-    if (!result?.failed.length || record.status || !isCurrent(record)) return;
-    const first = result.failed.find((run) => run.url) || result.failed[0];
-    const lines = result.failed.map((run) => `${run.name}: ${run.state.toLowerCase().replace(/_/g, " ")}`);
-    const title = `Failed checks:\n${lines.join("\n")}`;
+    // Compare the shown checks too, so the tooltip and link follow checks that finish while the state stays the same.
+    const signature = result?.state ? JSON.stringify([result.state, result.runs]) : null;
+    // A failed request (null result) keeps whatever icon is already shown.
+    if (!result || !isCurrent(record) || (record.status && record.statusSignature === signature)) return;
+    record.status?.remove();
+    record.status = null;
+    record.statusSignature = null;
+    if (!signature) return;
+    const { state, runs } = result;
+    const first = runs.find((run) => run.url) || runs[0];
+    const lines = runs.map((run) => `${run.name}: ${run.state.toLowerCase().replace(/_/g, " ")}`);
     const element = document.createElement(first.url ? "a" : "span");
-    element.className = "github-pr-commit-ci-failed";
-    element.title = title;
-    element.setAttribute("aria-label", `${result.failed.length} failed check${result.failed.length === 1 ? "" : "s"}: ${result.failed.map((run) => run.name).join(", ")}`);
+    element.className = `github-pr-commit-ci github-pr-commit-ci-${state}`;
+    element.title = `${STATUS_TITLES[state]}:\n${lines.join("\n")}`;
+    element.setAttribute("aria-label", `${runs.length} ${STATUS_TITLES[state].toLowerCase()}: ${runs.map((run) => run.name).join(", ")}`);
     if (first.url) {
       element.href = first.url;
       element.target = "_blank";
       element.rel = "noopener noreferrer";
     }
-    element.append(failureIcon());
+    element.append(statusIcon(state));
     // A <code> hash sits inside its link, so the icon goes after the link to avoid nesting links.
     const after = record.node.tagName === "CODE" ? record.anchor : (record.time || record.anchor);
     after.after(element);
     record.status = element;
+    record.statusSignature = signature;
   }
 
   function loadStatus(record, refresh = false) {
@@ -279,7 +299,7 @@
         if (!existing.time && dates.has(target.key)) annotate(existing, dates.get(target.key));
         continue;
       }
-      const record = { ...target, context, time: null, group: null, status: null };
+      const record = { ...target, context, time: null, group: null, status: null, statusSignature: null };
       records.set(anchor, record);
       committedDate(context, target)
         .then((iso) => annotate(record, iso))
@@ -301,7 +321,7 @@
         removeRecord(record);
         continue;
       }
-      if (!record.status) loadStatus(record, true);
+      loadStatus(record, true);
       if (!record.time) continue;
       const label = formatDate(record.time.dateTime);
       if (record.time.textContent !== label) record.time.textContent = label;

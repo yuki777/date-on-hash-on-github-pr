@@ -1,6 +1,6 @@
 # Date on Hash on GitHub PR
 
-Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels, and a red icon when a commit has failed CI checks.
+Show the committer date beside commit hashes on GitHub pull requests in pale yellow labels, and an icon for each commit's CI status: running, failed, or passed.
 
 ![Commit dates highlighted beside commit hashes on a GitHub pull request](https://github.com/yuki777/date-on-hash-on-github-pr/raw/9a8d2292ad934ccb2d9f6048cf16261a57cd6683/images/commits.png)
 
@@ -26,11 +26,17 @@ Minutes and hours are rounded down. Commits less than one minute old show `0 min
 
 Labels update once per minute and when you return to the tab. These label updates do not refetch commit data. Timestamps follow your browser's local time zone.
 
-## Failed CI icon
+## CI status icon
 
-When a commit has a failed check, a red icon appears after its date label. Click it to open the first failed check, such as the failed GitHub Actions job, in a new tab. Hover over it to see every failed check name and state.
+An icon after the date label shows the commit's CI status:
 
-These check states count as failed: `failure`, `error`, `startup failure`, `timed out`, and `cancelled`. Commits whose checks all passed, were skipped, or are still running show no icon. While a commit still has running checks, or has no checks yet and was committed less than an hour ago, its status is fetched again once per minute while the tab is visible, so the icon appears when a check fails. A failed icon stays until the page is reloaded, even if the check is re-run.
+- Red x: at least one check failed. Failed states are `failure`, `error`, `startup failure`, `timed out`, and `cancelled`. A failure is shown even while other checks are still running.
+- Yellow dot: no check has failed and at least one is still queued or running.
+- Green check: every check finished and at least one passed.
+
+Click the icon to open the first check in that state, such as the failed GitHub Actions job, in a new tab. Hover over it to see the check names and states. Commits with no checks, or only skipped checks, show no icon.
+
+While a commit still has running checks, or has no checks yet and was committed less than an hour ago, its status is fetched again once per minute while the tab is visible. The icon switches from the yellow dot to the result when the checks finish. A finished status is not fetched again until the page is reloaded, even if a check is re-run.
 
 ## Load the extension locally
 
@@ -74,6 +80,6 @@ Read the [published privacy policy](https://yuki777.github.io/date-on-hash-on-gi
 
 Earlier builds were loaded in Chromium and checked against two public PRs in Conversation, Commits, and Files views. Browser checks covered dynamic links, navigation, duplicate prevention, and failed retrieval. The extracted 1.0.7 submission package was checked for the exact compact format, minute/hour/day boundaries, automatic updates, preserved ISO timestamps, and three local time zones. Public PR screenshots were recaptured with the compact labels.
 
-The failed CI icon was checked against mocked GitHub responses; it relies on an undocumented GitHub endpoint. Private repositories and very large PRs have not been tested. GitHub HTML or embedded data changes may require an extension update.
+The CI status icon was checked against mocked GitHub responses; it relies on an undocumented GitHub endpoint. Private repositories and very large PRs have not been tested. GitHub HTML or embedded data changes may require an extension update.
 
 This Manifest V3 extension uses [content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) and [same-origin requests](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests). It requests GitHub site access without additional extension API permissions. It has no external runtime libraries or background service worker.
