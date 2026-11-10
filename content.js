@@ -13,6 +13,8 @@
   const FAILED_STATES = new Set(["CANCELLED", "ERROR", "FAILURE", "STARTUP_FAILURE", "TIMED_OUT"]);
   const SETTLED_STATES = new Set([...FAILED_STATES, "SUCCESS", "COMPLETED", "SKIPPED", "NEUTRAL", "STALE"]);
   const STATUS_REFRESH_MS = 60 * 1000;
+  // Checks can be registered a little after a push, so an empty pending summary is polled only for recent commits.
+  const EMPTY_CHECKS_WINDOW_MS = 60 * 60 * 1000;
 
   function pullRequest() {
     const match = location.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/|$)/);
@@ -112,10 +114,12 @@
     }
   }
 
-  function readStatus(data) {
+  function readStatus(data, iso) {
     if (!data || !Array.isArray(data.checkRuns)) return null;
     const failed = [];
-    let settled = true;
+    const age = iso ? Date.now() - Date.parse(iso) : Infinity;
+    let settled = !(data.checkRuns.length === 0 &&
+      String(data.checksHeaderState || "").toUpperCase() === "PENDING" && age < EMPTY_CHECKS_WINDOW_MS);
     for (const run of data.checkRuns) {
       if (!run || typeof run !== "object") continue;
       const state = String(run.state || "").toUpperCase();
@@ -134,7 +138,7 @@
     }
     const next = { at: Date.now(), result: null, promise: null };
     next.promise = fetchDocument(`/${context.repository}/commit/${target.sha}/status-details`, "json")
-      .then(readStatus)
+      .then((data) => readStatus(data, dates.get(target.key)))
       .then((result) => {
         next.result = result;
         next.at = Date.now();
