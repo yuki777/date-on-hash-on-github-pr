@@ -250,11 +250,13 @@
   }
 
   function annotateStatus(record, result) {
-    if (!isCurrent(record) || (record.status && record.statusState === result?.state)) return;
+    // Compare the shown checks too, so the tooltip and link follow checks that finish while the state stays the same.
+    const signature = result?.state ? JSON.stringify([result.state, result.runs]) : null;
+    if (!isCurrent(record) || (record.status && record.statusSignature === signature)) return;
     record.status?.remove();
     record.status = null;
-    record.statusState = null;
-    if (!result?.state) return;
+    record.statusSignature = null;
+    if (!signature) return;
     const { state, runs } = result;
     const first = runs.find((run) => run.url) || runs[0];
     const lines = runs.map((run) => `${run.name}: ${run.state.toLowerCase().replace(/_/g, " ")}`);
@@ -272,7 +274,7 @@
     const after = record.node.tagName === "CODE" ? record.anchor : (record.time || record.anchor);
     after.after(element);
     record.status = element;
-    record.statusState = state;
+    record.statusSignature = signature;
   }
 
   function loadStatus(record, refresh = false) {
@@ -296,7 +298,7 @@
         if (!existing.time && dates.has(target.key)) annotate(existing, dates.get(target.key));
         continue;
       }
-      const record = { ...target, context, time: null, group: null, status: null, statusState: null };
+      const record = { ...target, context, time: null, group: null, status: null, statusSignature: null };
       records.set(anchor, record);
       committedDate(context, target)
         .then((iso) => annotate(record, iso))
