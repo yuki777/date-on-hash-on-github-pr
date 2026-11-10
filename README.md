@@ -28,7 +28,7 @@ Labels update once per minute and when you return to the tab. These label update
 
 ## Failed CI icon
 
-When a commit has a failed check, a red icon appears after its date label. Click it to open the first failed check, such as the failed GitHub Actions job. Hover over it to see every failed check name and state.
+When a commit has a failed check, a red icon appears after its date label. Click it to open the first failed check, such as the failed GitHub Actions job, in a new tab. Hover over it to see every failed check name and state.
 
 These check states count as failed: `failure`, `error`, `startup failure`, `timed out`, and `cancelled`. Commits whose checks all passed, were skipped, or are still running show no icon. While a commit still has running checks, or has no checks yet and was committed less than an hour ago, its status is fetched again once per minute while the tab is visible, so the icon appears when a check fails. A failed icon stays until the page is reloaded, even if the check is re-run.
 
