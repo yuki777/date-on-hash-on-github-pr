@@ -24,16 +24,27 @@
   float: none !important;
 }
 
-.github-pr-commit-ci-failed {
+.github-pr-commit-ci {
   display: inline-flex;
   align-self: center;
   align-items: center;
   vertical-align: middle;
   margin-left: 0.4em;
-  color: var(--fgColor-danger, #d1242f) !important;
   line-height: 1;
 }
 
-.github-pr-commit-ci-failed:hover {
+.github-pr-commit-ci:hover {
   opacity: 0.8;
+}
+
+.github-pr-commit-ci-failed {
+  color: var(--fgColor-danger, #d1242f) !important;
+}
+
+.github-pr-commit-ci-running {
+  color: var(--fgColor-attention, #9a6700) !important;
+}
+
+.github-pr-commit-ci-passed {
+  color: var(--fgColor-success, #1a7f37) !important;
 }
